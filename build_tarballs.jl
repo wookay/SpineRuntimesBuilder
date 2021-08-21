@@ -17,10 +17,16 @@ export CFLAGS="-std=c99"
 cat <<EOF > CMakeLists.txt.patch
 diff -uNr spine-runtimes-3.8.95-original/spine-c/CMakeLists.txt spine-runtimes-3.8.95/spine-c/CMakeLists.txt
 --- spine-runtimes-3.8.95-original/spine-c/CMakeLists.txt	2021-08-18 16:17:20.000000000 +0900
-+++ spine-runtimes-3.8.95/spine-c/CMakeLists.txt	2021-08-18 16:45:14.000000000 +0900
-@@ -2,7 +2,8 @@
++++ spine-runtimes-3.8.95/spine-c/CMakeLists.txt	2021-08-20 10:16:42.000000000 +0900
+@@ -1,8 +1,12 @@
++project(libspine)
++cmake_minimum_required(VERSION 3.1)
++set(CMAKE_MACOSX_RPATH 1)
++
+ include_directories(include)
  file(GLOB INCLUDES "spine-c/include/**/*.h")
- file(GLOB SOURCES "spine-c/src/**/*.c" "spine-c/src/**/*.cpp")
+-file(GLOB SOURCES "spine-c/src/**/*.c" "spine-c/src/**/*.cpp")
++file(GLOB SOURCES "spine-c/src/**/*.c" "spine-c/src/**/*.cpp" "spine-c-unit-tests/extension.c")
 
 -add_library(spine-c STATIC \${SOURCES} \${INCLUDES})
 +add_library(spine-c \${SOURCES} \${INCLUDES})
@@ -30,7 +36,35 @@ diff -uNr spine-runtimes-3.8.95-original/spine-c/CMakeLists.txt spine-runtimes-3
 \ No newline at end of file
 +install(TARGETS spine-c DESTINATION lib)
 +install(FILES \${INCLUDES} DESTINATION include)
+diff -uNr spine-runtimes-3.8.95-original/spine-c/spine-c-unit-tests/extension.c spine-runtimes-3.8.95/spine-c/spine-c-unit-tests/extension.c
+--- spine-runtimes-3.8.95-original/spine-c/spine-c-unit-tests/extension.c	1970-01-01 09:00:00.000000000 +0900
++++ spine-runtimes-3.8.95/spine-c/spine-c-unit-tests/extension.c	2021-08-22 00:57:06.000000000 +0900
+@@ -0,0 +1,25 @@
++#include <unistd.h>
++#include <stdio.h>
++#include "spine/extension.h"
++#include "spine/spine.h"
 +
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++    void _spAtlasPage_createTexture(spAtlasPage* self, const char* path) {
++        self->rendererObject = 0;
++        self->width = 2048;
++        self->height = 2048;
++    }
++
++    void _spAtlasPage_disposeTexture(spAtlasPage* self) {
++    }
++
++    char* _spUtil_readFile(const char* path, int* length) {
++        return _spReadFile(path, length);
++    }
++
++#ifdef __cplusplus
++}
++#endif
 EOF
 patch -p2 -i CMakeLists.txt.patch
 mkdir build
@@ -45,18 +79,7 @@ make install
 
 # These are the platforms we will build for by default, unless further
 # platforms are passed in on the command line
-platforms = [
-    Platform("i686", "linux"; libc = "glibc"),
-    Platform("x86_64", "linux"; libc = "glibc"),
-    Platform("aarch64", "linux"; libc = "glibc"),
-    Platform("armv7l", "linux"; call_abi = "eabihf", libc = "glibc"),
-    Platform("powerpc64le", "linux"; libc = "glibc"),
-    Platform("i686", "linux"; libc = "musl"),
-    Platform("x86_64", "linux"; libc = "musl"),
-    Platform("aarch64", "linux"; libc = "musl"),
-    Platform("armv7l", "linux"; call_abi = "eabihf", libc = "musl")
-]
-
+platforms = supported_platforms(; experimental=true)
 
 # The products that we will ensure are always built
 products = [
